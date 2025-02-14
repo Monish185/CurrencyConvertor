@@ -1,34 +1,44 @@
 import { useEffect, useState } from "react";
 
-const useHistoricalData = (baseCurrency,targetCurrency) => {
-  const [historicalData, sethistoricalData] = useState([]);
+const useHistoricalData = (baseCurrency, targetCurrency) => {
+  const [historicalData, setHistoricalData] = useState([]);
 
   useEffect(() => {
-    
-        let today = new Date();
-        let pastMonth = new Date(today);
-        pastMonth.setDate(today.getDate() - 30)
+    const fetchHistoricalData = async () => {
+      let today = new Date();
+      let pastMonth = new Date(today);
+      pastMonth.setDate(today.getDate() - 30);
 
-        let dateRange = [];
-        for (let i = 0; i < 30; i++) {
-          let date = new Date(pastMonth);
-          date.setDate(pastMonth.getDate() + i);
-          dateRange.push(date.toISOString(  ).split("T")[0]);
+      let dateRange = [];
+      for (let i = 0; i < 30; i++) {
+        let date = new Date(pastMonth);
+        date.setDate(pastMonth.getDate() + i);
+        dateRange.push(date.toISOString().split("T")[0]);
+      }
+
+      let rates = [];
+      const apiKey = import.meta.env.VITE_EXCHANGE_API_KEY; // Secure API Key
+
+      for (const date of dateRange) {
+        let url = `https://openexchangerates.org/api/historical/${date}.json?app_id=${apiKey}&base=${baseCurrency}&symbols=${targetCurrency}`;
+
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.rates) {
+            rates.push({ date, rate: data.rates[targetCurrency] });
+          }
+        } catch (error) {
+          console.error(`Error fetching data for ${date}:`, error);
         }
+      }
+      setHistoricalData(rates);
+    };
 
-        let rates = [];
+    fetchHistoricalData();
+  }, [baseCurrency, targetCurrency]);
 
-        for (const date of dateRange) {
-         let url = `https://openexchangerates.org/api/historical/${date}.json?app_id=d7f60c5e6f584553af70ab62556e02d3&base=${baseCurrency}&symbols=${targetCurrency}&show_alternative=false&prettyprint=false`;
-          
-          fetch(url).then((res) => res.json())
-          .then((res) => rates.push({ date, rate: res.rates[targetCurrency] }))
-        }
-        sethistoricalData(rates);
-  }, [baseCurrency,targetCurrency]);
-
-  console.log(historicalData);
-  return historicalData; 
+  return historicalData;
 };
 
 export default useHistoricalData;
